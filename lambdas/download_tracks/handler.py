@@ -12,7 +12,7 @@ from lambdas.common import (
     upload_file,
     generate_presigned_url
 )
-from lambdas.download_tracks.downloader import Track, download_tracks
+from downloader import Track, download_tracks
 
 log = get_logger(__name__)
 
