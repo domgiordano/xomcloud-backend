@@ -1,40 +1,37 @@
+from dataclasses import dataclass
+from typing import Optional
 
-import json
-class BaseXomcloudException(Exception):
-    def __init__(self, error, handler, function, status=500, base="💥 Error in Xomcloud 💥"):
-        self.error = error
-        self.handler = handler
-        self.function = function
-        self.status = status
-        self.base = base
-        self.message = f'{self.base}: {self.error}'
-    def get_message(self):
+
+@dataclass
+class AppError(Exception):
+    """Base application error."""
+    message: str
+    status: int = 500
+    code: str = "INTERNAL_ERROR"
+    
+    def __str__(self) -> str:
         return self.message
-    def get_handler(self):
-        return self.handler
-    def get_function(self):
-        return self.function
-    def get_status(self):
-        return self.status
-    def __str__(self):
-        return json.dumps({
-            'message': self.get_message(),
-            'callingHandler': self.get_handler(),
-            'fileAndFunction': self.get_function(),
-            'status': self.get_status()
-        })
-class LambdaAuthorizerError(BaseXomcloudException):
-    def __init__(self, error, handler, function, status=404, base="💥 Error in Lambda Authorizer 💥"):
-        super().__init__(error, handler, function, status, base)
 
-class UnauthorizedError(BaseXomcloudException):
-    def __init__(self, error, handler, function, status=401, base="💥 Unauthorized in Token Service to access account💥"):
-        super().__init__(error, handler, function, status, base)
 
-class DynamodbError(BaseXomcloudException):
-    def __init__(self, error, handler, function, status=500, base="💥 Error in Xomcloud Dynamodb Service 💥"):
-        super().__init__(error, handler, function, status, base)
+class AuthError(AppError):
+    """Authentication/authorization errors."""
+    def __init__(self, message: str = "Unauthorized", status: int = 401):
+        super().__init__(message=message, status=status, code="AUTH_ERROR")
 
-class DownloadTrackError(BaseXomcloudException):
-    def __init__(self, error, handler, function, status=500, base="💥 Error in Xomcloud Download Tracks 💥"):
-        super().__init__(error, handler, function, status, base)
+
+class ValidationError(AppError):
+    """Input validation errors."""
+    def __init__(self, message: str = "Invalid input"):
+        super().__init__(message=message, status=400, code="VALIDATION_ERROR")
+
+
+class DownloadError(AppError):
+    """Track download errors."""
+    def __init__(self, message: str = "Download failed"):
+        super().__init__(message=message, status=500, code="DOWNLOAD_ERROR")
+
+
+class NotFoundError(AppError):
+    """Resource not found errors."""
+    def __init__(self, message: str = "Resource not found"):
+        super().__init__(message=message, status=404, code="NOT_FOUND")

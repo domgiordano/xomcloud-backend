@@ -1,18 +1,16 @@
 import logging
+import sys
 
-class Logger:
-
-    def __init__(self, log_level: str = "INFO"):
-        self.log_level = log_level.upper()
-        self.logger = logging.getLogger()
-        self.logger.setLevel(log_level)
-        self.handler = logging.StreamHandler()
-        self.formatter = logging.Formatter(
-            '**%(levelname)s** %(name)s - %(funcName)s() - Line:%(lineno)d - %(message)s'
-        )
-        self.handler.setFormatter(self.formatter)
-        self.logger.addHandler(self.handler)
-
-    def get_logger(self, file):
-        self.loggger = logging.getLogger(file.split('/')[-1].upper())
-        return self.logger
+def get_logger(name: str = __name__, level: str = "INFO") -> logging.Logger:
+    """Get a configured logger instance."""
+    logger = logging.getLogger(name.split("/")[-1].replace(".py", ""))
+    
+    if not logger.handlers:
+        handler = logging.StreamHandler(sys.stdout)
+        handler.setFormatter(logging.Formatter(
+            "[%(levelname)s] %(name)s.%(funcName)s:%(lineno)d - %(message)s"
+        ))
+        logger.addHandler(handler)
+        logger.setLevel(getattr(logging, level.upper(), logging.INFO))
+    
+    return logger
