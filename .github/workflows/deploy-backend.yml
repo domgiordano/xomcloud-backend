@@ -1,0 +1,95 @@
+name: Deploy Backend
+
+on:
+  push:
+    branches:
+      - master
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: "3.10"
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt -t lambdas/common
+
+      - name: Package Lambda functions
+        run: |
+          cd lambdas/authorizer
+          zip -r ../../authorizer.zip *
+          cd ../download_tracks
+          zip -r ../../download_tracks.zip *
+          cd ../..
+          mkdir -p python/lambdas
+          cp -r lambdas/common python/lambdas/
+          python3.10 -m pip install --platform manylinux2014_x86_64 --only-binary=:all: -t python/ -r requirements.txt
+          zip -r xomcloud-shared-packages.zip python
+
+      - name: Deploy Lambda Layer
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          AWS_REGION: "us-east-1"
+        run: |
+          LAYER_OUTPUT=$(aws lambda publish-layer-version \
+            --layer-name xomcloud-shared-packages \
+            --zip-file fileb://xomcloud-shared-packages.zip \
+            --compatible-runtimes python3.10 \
+            --region $AWS_REGION \
+            --output json)
+
+          echo "LAYER_ARN=$(echo $LAYER_OUTPUT | jq -r .LayerVersionArn)" >> $GITHUB_ENV
+          echo "Layer ARN: $LAYER_ARN"
+
+      - name: Deploy Authroizer Lambda Function Code
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          AWS_REGION: "us-east-1"
+        run: |
+          aws lambda update-function-code \
+            --function-name xomcloud-authorizer \
+            --zip-file fileb://authorizer.zip
+          sleep 5
+
+      - name: Deploy Authorizer Lambda Configurations
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          AWS_REGION: "us-east-1"
+          LAYER_ARN: ${{ env.LAYER_ARN }}
+        run: |
+          aws lambda update-function-configuration \
+            --function-name xomcloud-authorizer \
+            --layers $LAYER_ARN \
+            --region $AWS_REGION
+
+      - name: Deploy Download Tracks Lambda Function Code
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          AWS_REGION: "us-east-1"
+        run: |
+          aws lambda update-function-code \
+            --function-name xomcloud-download-tracks \
+            --zip-file fileb://download_tracks.zip
+          sleep 5
+
+      - name: Deploy Download Tracks Lambda Configurations
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          AWS_REGION: "us-east-1"
+          LAYER_ARN: ${{ env.LAYER_ARN }}
+        run: |
+          aws lambda update-function-configuration \
+            --function-name xomcloud-download-tracks \
+            --layers $LAYER_ARN \
+            --region $AWS_REGION
