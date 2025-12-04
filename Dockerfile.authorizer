@@ -1,0 +1,14 @@
+# Dockerfile for xomcloud-authorizer Lambda
+# Lightweight - no ffmpeg needed
+
+FROM public.ecr.aws/lambda/python:3.11
+
+# Copy requirements and install dependencies
+COPY requirements-authorizer.txt ${LAMBDA_TASK_ROOT}/requirements.txt
+RUN pip install --no-cache-dir -r ${LAMBDA_TASK_ROOT}/requirements.txt
+
+# Copy Lambda function code
+COPY lambdas/ ${LAMBDA_TASK_ROOT}/lambdas/
+
+# Set the handler
+CMD ["lambdas.authorizer.handler.handler"]
