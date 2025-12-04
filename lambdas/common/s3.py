@@ -1,8 +1,8 @@
 import boto3
-from typing import Optional
+import os
 from lambdas.common.config import aws_access_key, aws_secret_key
 
-BUCKET_NAME = "xomcloud-downloads"
+S3_DOWNLOAD_BUCKET_NAME = os.environ.get("S3_DOWNLOAD_BUCKET_NAME", "")
 REGION = "us-east-1"
 
 
@@ -21,7 +21,7 @@ def upload_file(file_path: str, key: str, content_type: str = "application/zip")
     s3 = get_s3_client()
     s3.upload_file(
         file_path,
-        BUCKET_NAME,
+        S3_DOWNLOAD_BUCKET_NAME,
         key,
         ExtraArgs={"ContentType": content_type}
     )
@@ -32,7 +32,7 @@ def upload_bytes(data: bytes, key: str, content_type: str = "application/zip") -
     """Upload bytes to S3 and return the key."""
     s3 = get_s3_client()
     s3.put_object(
-        Bucket=BUCKET_NAME,
+        Bucket=S3_DOWNLOAD_BUCKET_NAME,
         Key=key,
         Body=data,
         ContentType=content_type
@@ -45,6 +45,6 @@ def generate_presigned_url(key: str, expires_in: int = 3600) -> str:
     s3 = get_s3_client()
     return s3.generate_presigned_url(
         "get_object",
-        Params={"Bucket": BUCKET_NAME, "Key": key},
+        Params={"Bucket": S3_DOWNLOAD_BUCKET_NAME, "Key": key},
         ExpiresIn=expires_in
     )
