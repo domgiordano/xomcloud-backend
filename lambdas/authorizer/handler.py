@@ -22,7 +22,7 @@ def generate_policy(effect: str, resource: str, principal: str = "xomcloud") -> 
 def decode_token(token: str) -> dict | None:
     """Decode and validate a JWT token."""
     try:
-        clean_token = token.replace("Bearer ", "")
+        clean_token = token.replace("Bearer ", "").strip()
         return jwt.decode(clean_token, api_secret_key(), algorithms=["HS256"])
     except jwt.ExpiredSignatureError:
         log.warning("Token expired")
@@ -33,23 +33,28 @@ def decode_token(token: str) -> dict | None:
 
 
 def handler(event: dict, context) -> dict:
-    """Lambda authorizer handler."""
+    """Lambda authorizer handler for XOMCLOUD API."""
     try:
         method_arn = event.get("methodArn", "")
         auth_token = event.get("authorizationToken", "")
         
-        if not auth_token or not method_arn:
-            log.warning("Missing token or ARN")
+        if not method_arn:
+            log.warning("Missing method ARN")
+            return generate_policy("Deny", "*")
+        
+        if not auth_token:
+            log.warning("Missing authorization token")
             return generate_policy("Deny", method_arn)
         
+        # Decode and validate JWT
         user = decode_token(auth_token)
         if user:
             log.info(f"Authorized user: {user.get('sub', 'unknown')}")
-            return generate_policy("Allow", method_arn)
+            return generate_policy("Allow", method_arn, principal=str(user.get('sub', 'xomcloud')))
         
-        log.warning("Authorization denied")
+        log.warning("Authorization denied - invalid token")
         return generate_policy("Deny", method_arn)
 
     except Exception as e:
         log.error(f"Error in authorizer: {e}")
-        return generate_policy("Deny", event.get("methodArn", ""))
+        return generate_policy("Deny", event.get("methodArn", "*"))
