@@ -33,7 +33,6 @@ def error(err: AppError | Exception, status: int = 500) -> dict:
             })
         }
     
-    # Generic exception fallback
     return {
         "statusCode": status,
         "headers": CORS_HEADERS,

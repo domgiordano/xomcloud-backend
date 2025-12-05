@@ -1,9 +1,9 @@
 # Dockerfile for xomcloud-download-tracks Lambda
-# Uses AWS Lambda Python base image with ffmpeg
+# Uses AWS Lambda Python base image with ffmpeg for audio conversion
 
 FROM public.ecr.aws/lambda/python:3.11
 
-# Install ffmpeg
+# Install ffmpeg (required by scdl for audio conversion)
 RUN yum install -y tar xz && \
     curl -L https://johnvansickle.com/ffmpeg/releases/ffmpeg-release-amd64-static.tar.xz -o /tmp/ffmpeg.tar.xz && \
     tar -xf /tmp/ffmpeg.tar.xz -C /tmp && \

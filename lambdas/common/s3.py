@@ -1,19 +1,18 @@
 import boto3
 import os
-from lambdas.common.config import aws_access_key, aws_secret_key
 
-S3_DOWNLOAD_BUCKET_NAME = os.environ.get("S3_DOWNLOAD_BUCKET_NAME", "")
-REGION = "us-east-1"
+S3_DOWNLOAD_BUCKET_NAME = os.environ.get("S3_DOWNLOAD_BUCKET_NAME", "xomcloud-downloads")
+REGION = os.environ.get("AWS_REGION", "us-east-1")
+
+_s3_client = None
 
 
 def get_s3_client():
-    """Get configured S3 client."""
-    return boto3.client(
-        "s3",
-        region_name=REGION,
-        aws_access_key_id=aws_access_key(),
-        aws_secret_access_key=aws_secret_key()
-    )
+    """Get configured S3 client (lazy initialization)."""
+    global _s3_client
+    if _s3_client is None:
+        _s3_client = boto3.client("s3", region_name=REGION)
+    return _s3_client
 
 
 def upload_file(file_path: str, key: str, content_type: str = "application/zip") -> str:
