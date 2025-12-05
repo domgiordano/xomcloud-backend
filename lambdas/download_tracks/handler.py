@@ -32,51 +32,50 @@ def validate_request(body: dict) -> tuple[list[Track], str]:
     """Validate and parse the download request. Returns (tracks, username)."""
     if not body:
         raise ValidationError("Request body is required")
-    
+    # Username is passed in the body explicitly (preferred)
+    username = body.get("username")
+
     tracks_data = body.get("tracks", [])
     if not tracks_data:
         raise ValidationError("At least one track is required")
-    
+
     if len(tracks_data) > MAX_TRACKS:
         raise ValidationError(f"Maximum {MAX_TRACKS} tracks per request")
-    
+
     tracks = []
-    username = None
-    
+
     for i, t in enumerate(tracks_data):
         if not isinstance(t, dict):
             raise ValidationError(f"Track {i} must be an object")
-        
+
         # Required fields
         track_id = t.get("id")
         url = t.get("url") or t.get("permalink_url")
         title = t.get("title", f"Track {i + 1}")
-        
-        # Artist can come from different fields
+
+        # Artist: prefer `metadata_artist` (coming from SoundCloud metadata),
+        # then fall back to existing fields.
         artist = (
-            t.get("artist") or 
+            t.get("artist") or
+            t.get("metadata_artist") or
             (t.get("user", {}).get("username") if isinstance(t.get("user"), dict) else None) or
             "Unknown Artist"
         )
-        
-        # Capture username for folder naming (first artist)
-        if not username and artist != "Unknown Artist":
-            username = artist
-        
+
         if not track_id:
             raise ValidationError(f"Track {i} missing 'id' field")
-        
+
         if not url:
             # Build URL from track ID if not provided
             url = f"https://api.soundcloud.com/tracks/{track_id}"
-        
+
         tracks.append(Track(
             id=str(track_id),
             url=url,
             title=title,
             artist=artist
         ))
-    
+
     return tracks, username or "xomcloud"
 
 
