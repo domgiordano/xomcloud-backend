@@ -5,6 +5,7 @@ import asyncio
 import os
 import uuid
 import json
+from datetime import datetime
 
 from lambdas.common import (
     get_logger,
@@ -20,15 +21,15 @@ from lambdas.download_tracks.downloader import Track, download_tracks
 
 log = get_logger(__name__)
 
-# Maximum tracks per request
-MAX_TRACKS = 10
+# Maximum tracks per request (limited for reliability with long tracks)
+MAX_TRACKS = 5
 
 # S3 presigned URL expiry (1 hour)
 PRESIGNED_EXPIRY = 3600
 
 
-def validate_request(body: dict) -> list[Track]:
-    """Validate and parse the download request."""
+def validate_request(body: dict) -> tuple[list[Track], str]:
+    """Validate and parse the download request. Returns (tracks, username)."""
     if not body:
         raise ValidationError("Request body is required")
     
@@ -40,6 +41,8 @@ def validate_request(body: dict) -> list[Track]:
         raise ValidationError(f"Maximum {MAX_TRACKS} tracks per request")
     
     tracks = []
+    username = None
+    
     for i, t in enumerate(tracks_data):
         if not isinstance(t, dict):
             raise ValidationError(f"Track {i} must be an object")
@@ -56,6 +59,10 @@ def validate_request(body: dict) -> list[Track]:
             "Unknown Artist"
         )
         
+        # Capture username for folder naming (first artist)
+        if not username and artist != "Unknown Artist":
+            username = artist
+        
         if not track_id:
             raise ValidationError(f"Track {i} missing 'id' field")
         
@@ -70,19 +77,22 @@ def validate_request(body: dict) -> list[Track]:
             artist=artist
         ))
     
-    return tracks
+    return tracks, username or "xomcloud"
 
 
-async def process_download(tracks: list[Track]) -> dict:
+async def process_download(tracks: list[Track], username: str) -> dict:
     """Process the download and return result with presigned URL."""
     log.info(f"Starting download of {len(tracks)} tracks")
     
     # Download tracks and create zip
     zip_path, results = await download_tracks(tracks)
     
-    # Generate unique S3 key
-    timestamp = uuid.uuid4().hex[:8]
-    s3_key = f"downloads/{timestamp}/xomcloud-tracks.zip"
+    # Generate folder name: username_timestamp
+    timestamp = datetime.utcnow().strftime("%Y%m%d_%H%M%S")
+    safe_username = "".join(c if c.isalnum() or c in "-_" else "_" for c in username)[:30]
+    folder_name = f"{safe_username}_{timestamp}"
+    
+    s3_key = f"downloads/{folder_name}/xomcloud-tracks.zip"
     
     # Upload to S3
     log.info(f"Uploading zip to S3: {s3_key}")
@@ -133,12 +143,12 @@ def handler(event: dict, context) -> dict:
         log.info("Processing download request")
         
         body = parse_body(event)
-        tracks = validate_request(body)
+        tracks, username = validate_request(body)
         
-        log.info(f"Validated {len(tracks)} tracks for download")
+        log.info(f"Validated {len(tracks)} tracks for download (user: {username})")
         
         # Run async download process
-        result = asyncio.run(process_download(tracks))
+        result = asyncio.run(process_download(tracks, username))
         
         log.info(f"Download complete: {result['successful']}/{result['total']} tracks")
         return success(result)
