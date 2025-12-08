@@ -89,9 +89,8 @@ async def process_download(tracks: list[Track], username: str) -> dict:
     # Generate folder name: username_timestamp
     timestamp = datetime.utcnow().strftime("%Y%m%d_%H%M%S")
     safe_username = "".join(c if c.isalnum() or c in "-_" else "_" for c in username)[:30]
-    folder_name = f"{safe_username}_{timestamp}"
-    
-    s3_key = f"downloads/{folder_name}/xomcloud-tracks.zip"
+
+    s3_key = f"{safe_username}/{timestamp}/xomcloud-tracks.zip"
     
     # Upload to S3
     log.info(f"Uploading zip to S3: {s3_key}")
