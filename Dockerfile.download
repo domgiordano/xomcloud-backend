@@ -21,6 +21,3 @@ RUN pip install --no-cache-dir -r ${LAMBDA_TASK_ROOT}/requirements.txt
 
 # Copy Lambda function code
 COPY lambdas/ ${LAMBDA_TASK_ROOT}/lambdas/
-
-# Set the handler
-CMD ["lambdas.download_tracks.handler"]
