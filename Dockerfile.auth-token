@@ -1,0 +1,13 @@
+# Dockerfile for xomcloud-auth-token Lambda
+# Lightweight - no ffmpeg/scdl needed, just SSM + outbound HTTPS to SoundCloud
+
+FROM public.ecr.aws/lambda/python:3.13
+
+# Copy requirements and install dependencies
+COPY requirements-auth-token.txt ${LAMBDA_TASK_ROOT}/requirements.txt
+RUN pip install --no-cache-dir -r ${LAMBDA_TASK_ROOT}/requirements.txt
+
+# Copy Lambda function code
+COPY lambdas/ ${LAMBDA_TASK_ROOT}/lambdas/
+
+CMD ["lambdas.auth_token.handler.handler"]
