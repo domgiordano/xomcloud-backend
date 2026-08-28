@@ -5,8 +5,6 @@ on:
     branches: [master]
   workflow_dispatch:
 
-env:
-  AWS_REGION: us-east-1
   ECR_REGISTRY: ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.us-east-1.amazonaws.com
   APP_NAME: xomcloud
 
@@ -30,17 +28,19 @@ jobs:
         run: pytest tests/ -v
 
   deploy-authorizer:
+    permissions:
+      id-token: write # mint the OIDC token traded for the deploy role
+      contents: read
     needs: test
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
 
       - name: Configure AWS credentials
-        uses: aws-actions/configure-aws-credentials@v6
+        uses: aws-actions/configure-aws-credentials@v5
         with:
-          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
-          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          aws-region: ${{ env.AWS_REGION }}
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+          aws-region: us-east-1
 
       - name: Login to Amazon ECR
         uses: aws-actions/amazon-ecr-login@v2
@@ -57,17 +57,19 @@ jobs:
             --image-uri ${{ env.ECR_REGISTRY }}/${{ env.APP_NAME }}-authorizer:latest
 
   deploy-download-tracks:
+    permissions:
+      id-token: write # mint the OIDC token traded for the deploy role
+      contents: read
     needs: test
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
 
       - name: Configure AWS credentials
-        uses: aws-actions/configure-aws-credentials@v6
+        uses: aws-actions/configure-aws-credentials@v5
         with:
-          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
-          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          aws-region: ${{ env.AWS_REGION }}
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+          aws-region: us-east-1
 
       - name: Login to Amazon ECR
         uses: aws-actions/amazon-ecr-login@v2
@@ -84,17 +86,19 @@ jobs:
             --image-uri ${{ env.ECR_REGISTRY }}/${{ env.APP_NAME }}-download-tracks:latest
 
   deploy-auth-token:
+    permissions:
+      id-token: write # mint the OIDC token traded for the deploy role
+      contents: read
     needs: test
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
 
       - name: Configure AWS credentials
-        uses: aws-actions/configure-aws-credentials@v6
+        uses: aws-actions/configure-aws-credentials@v5
         with:
-          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
-          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          aws-region: ${{ env.AWS_REGION }}
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+          aws-region: us-east-1
 
       - name: Login to Amazon ECR
         uses: aws-actions/amazon-ecr-login@v2
