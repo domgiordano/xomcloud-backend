@@ -5,6 +5,9 @@ on:
     branches: [master]
   workflow_dispatch:
 
+
+env:
+  AWS_REGION: us-east-1
   ECR_REGISTRY: ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.us-east-1.amazonaws.com
   APP_NAME: xomcloud
 
